@@ -16,16 +16,15 @@ parser.add_argument("--robot", default="Aliengo", choices=[name.title() for name
 parser.add_argument("--mode", default="Fsm", choices=[name.title() for name in ControllerType.__members__.keys()], help="controller types")
 parser.add_argument("--num-envs", type=int, default=1, help="the number of robots")
 parser.add_argument("--render-fps", type=int, default=30, help="render fps")
-parser.add_argument("--disable-gamepad", action="store_true")
 parser.add_argument("--checkpoint", default=None)
 
 args = parser.parse_args()
 
-use_gamepad = not args.disable_gamepad
 debug_vis = False # draw ground normal vector
 
-if use_gamepad:
-    gamepad = gamepad_reader.Gamepad(vel_scale_x=2.5, vel_scale_y=1.5, vel_scale_rot=3.0)
+# 使用键盘输入控制
+gamepad = gamepad_reader.Gamepad(vel_scale_x=2.5, vel_scale_y=1.5, vel_scale_rot=3.0)
+print("键盘输入已启用")
 
 
 def main():
@@ -48,6 +47,23 @@ def main():
     # force_sensors = get_force_sensor(gym, envs, actors)
     cam_pos = gymapi.Vec3(2,2,2) # w.r.t target env
     viewer = add_viewer(gym, sim, envs[0], cam_pos)
+    
+    # 订阅Isaac Gym键盘事件
+    gym.subscribe_viewer_keyboard_event(viewer, gymapi.KEY_W, "KEY_W")
+    gym.subscribe_viewer_keyboard_event(viewer, gymapi.KEY_S, "KEY_S")
+    gym.subscribe_viewer_keyboard_event(viewer, gymapi.KEY_A, "KEY_A")
+    gym.subscribe_viewer_keyboard_event(viewer, gymapi.KEY_D, "KEY_D")
+    gym.subscribe_viewer_keyboard_event(viewer, gymapi.KEY_Q, "KEY_Q")
+    gym.subscribe_viewer_keyboard_event(viewer, gymapi.KEY_E, "KEY_E")
+    gym.subscribe_viewer_keyboard_event(viewer, gymapi.KEY_SPACE, "KEY_SPACE")
+    # 使用 ASCII 码值 13 表示回车键（Isaac Gym 可能没有 KEY_RETURN 常量）
+    try:
+        # 尝试使用 KEY_ENTER（如果存在）
+        gym.subscribe_viewer_keyboard_event(viewer, gymapi.KEY_ENTER, "KEY_ENTER")
+    except AttributeError:
+        # 如果不存在，使用 ASCII 码值
+        gym.subscribe_viewer_keyboard_event(viewer, 13, "KEY_ENTER")
+    gym.subscribe_viewer_keyboard_event(viewer, gymapi.KEY_ESCAPE, "KEY_ESCAPE")
 
     # Setup MPC Controller
     controllers = []
@@ -79,18 +95,29 @@ def main():
 
     # simulation loop
     while not gym.query_viewer_has_closed(viewer):
+        # 处理Isaac Gym键盘事件
+        events = gym.query_viewer_action_events(viewer)
+        for evt in events:
+            # evt.action 是订阅时设置的字符串（如 "KEY_W"）
+            # evt.value > 0 表示按下，evt.value == 0 表示释放
+            if evt.value > 0:
+                gamepad.handle_keyboard_action(evt.action, 'pressed')
+            elif evt.value == 0:
+                gamepad.handle_keyboard_action(evt.action, 'released')
+        # 每次循环都更新速度（基于当前按键状态），即使没有新事件
+        gamepad.update_keyboard_velocity()
+        
         # step the physics
         gym.simulate(sim)
         gym.fetch_results(sim, True)
 
         # current_time = gym.get_sim_time(sim)
         commands = np.zeros(3, dtype=DTYPE)
-        if use_gamepad:
-            lin_speed, ang_speed, e_stop = gamepad.get_command()
-            Parameters.cmpc_gait = gamepad.get_gait()
-            Parameters.control_mode = gamepad.get_mode()
-            if not e_stop:
-                commands = np.array([lin_speed[0], lin_speed[1], ang_speed], dtype=DTYPE)
+        lin_speed, ang_speed, e_stop = gamepad.get_command()
+        Parameters.cmpc_gait = gamepad.get_gait()
+        Parameters.control_mode = gamepad.get_mode()
+        if not e_stop:
+            commands = np.array([lin_speed[0], lin_speed[1], ang_speed], dtype=DTYPE)
 
         # run controllers
         for idx, (env, actor, controller) in enumerate(zip(envs, actors, controllers)):
@@ -101,7 +128,9 @@ def main():
             gym.apply_actor_dof_efforts(env, actor, legTorques)
 
         if Parameters.locomotionUnsafe:
-            gamepad.fake_event(ev_type='Key',code='BTN_TR',value=0)
+            # 切换模式
+            gamepad._mode = next(gamepad._mode_generator)
+            print(f"切换模式: {gamepad._mode}")
             Parameters.locomotionUnsafe = False
 
         if debug_vis:
@@ -121,11 +150,7 @@ def main():
         gym.sync_frame_time(sim)
         count += 1
 
-    if use_gamepad:
-        gamepad.stop()
-        # gamepad.read_thread.join()
-        # print("Gamepad read thread killed!") # too slow
-
+    gamepad.stop()
     gym.destroy_viewer(viewer)
     gym.destroy_sim(sim)
 
