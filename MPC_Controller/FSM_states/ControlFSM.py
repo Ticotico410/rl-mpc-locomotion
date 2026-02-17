@@ -3,19 +3,20 @@
 * calls to the FSM State functions and manages transitions between all
 * of the states.
 """
-
-from MPC_Controller.FSM_states.FSM_State_Passive import FSM_State_Passive
-from MPC_Controller.FSM_states.FSM_State_RecoveryStand import FSM_State_RecoveyrStand
+from MPC_Controller.utils import FSM_OperatingMode
 
 from MPC_Controller.FSM_states.FSM_State import FSM_State, FSM_StateName
-from MPC_Controller.common.Quadruped import Quadruped
-from MPC_Controller.common.StateEstimator import StateEstimator
-from MPC_Controller.common.LegController import LegController
-from MPC_Controller.Parameters import Parameters
-from MPC_Controller.FSM_states.ControlFSMData import ControlFSMData
+from MPC_Controller.FSM_states.FSM_State_Passive import FSM_State_Passive
 from MPC_Controller.FSM_states.FSM_State_Locomotion import FSM_State_Locomotion
+from MPC_Controller.FSM_states.FSM_State_RecoveryStand import FSM_State_RecoveyrStand
+
+from MPC_Controller.Parameters import Parameters
+from MPC_Controller.common.Quadruped import Quadruped
+from MPC_Controller.common.LegController import LegController
+from MPC_Controller.common.StateEstimator import StateEstimator
+from MPC_Controller.FSM_states.ControlFSMData import ControlFSMData
 from MPC_Controller.common.DesiredStateCommand import DesiredStateCommand
-from MPC_Controller.utils import FSM_OperatingMode
+
 
 class FSM_StatesList:
     def __init__(self) -> None:

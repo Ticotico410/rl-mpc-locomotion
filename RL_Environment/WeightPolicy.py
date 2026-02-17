@@ -141,7 +141,7 @@ class WeightPolicy:
                                        dof_pos, 
                                        dof_vel, 
                                        _actions))
-        obs_pad = np.expand_dims(observations, axis=0)
+        obs_pad = np.expand_dims(observations, axis=0)  # shape (1, 48)
         self.obs = torch.from_numpy(obs_pad.astype(np.float32)).to(self.device)
 
     def _preproc_obs(self, obs_batch):

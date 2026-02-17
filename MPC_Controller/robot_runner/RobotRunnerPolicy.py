@@ -1,16 +1,21 @@
 import time
 import numpy as np
-from MPC_Controller.common.DesiredStateCommand import DesiredStateCommand
-from MPC_Controller.FSM_states.ControlFSM import ControlFSM
-from MPC_Controller.FSM_states.ControlFSMData import ControlFSMData
+
+from MPC_Controller.utils import DTYPE
 from MPC_Controller.Parameters import Parameters
+from MPC_Controller.convex_MPC.ConvexMPCLocomotion import ConvexMPCLocomotion
+
 from MPC_Controller.common.Quadruped import Quadruped, RobotType
 from MPC_Controller.common.LegController import LegController
 from MPC_Controller.common.StateEstimator import StateEstimator
-from MPC_Controller.convex_MPC.ConvexMPCLocomotion import ConvexMPCLocomotion
-from MPC_Controller.utils import DTYPE
+from MPC_Controller.common.DesiredStateCommand import DesiredStateCommand
+
+from MPC_Controller.FSM_states.ControlFSM import ControlFSM
+from MPC_Controller.FSM_states.ControlFSMData import ControlFSMData
+
 from RL_Environment.WeightPolicy import WeightPolicy
 from RL_Environment.utils.utils import set_np_formatting
+
 
 class RobotRunnerPolicy:
     def __init__(self, checkpoint=None):
@@ -22,6 +27,7 @@ class RobotRunnerPolicy:
         robot data, and any control logic specific data.
         """
         self.robotType = robotType
+        
         task = robotType.name.title()
         if self.checkpoint is None:
             self.checkpoint = f"RL_Environment/runs/{task}/nn/{task}.pth"
@@ -42,8 +48,7 @@ class RobotRunnerPolicy:
         self._desiredStateCommand = DesiredStateCommand()
 
         # init weight policy
-        self._weightPolicy = WeightPolicy(task=task,
-                                          checkpoint=self.checkpoint)
+        self._weightPolicy = WeightPolicy(task=task, checkpoint=self.checkpoint)
         weights = self._quadruped._mpc_weights[:-1] # keep weights shape (12,)
         # weights.pop() # keep weights shape (12,)
         # self.weights = np.asarray(weights, dtype=DTYPE)

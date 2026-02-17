@@ -1,17 +1,21 @@
 import math
-from MPC_Controller.Parameters import Parameters
-from MPC_Controller.robot_runner.RobotRunnerFSM import RobotRunnerFSM
-from MPC_Controller.robot_runner.RobotRunnerMin import RobotRunnerMin
-from MPC_Controller.robot_runner.RobotRunnerPolicy import RobotRunnerPolicy
-from MPC_Controller.common.Quadruped import RobotType
-from MPC_Controller.utils import DTYPE, ControllerType
-from RL_Environment import gamepad_reader
+
 from isaacgym import gymapi
-from RL_Environment.sim_utils import *
 from argparse import ArgumentParser
 
-parser = ArgumentParser(prog="RL_MPC_LOCOMOTION")
+from MPC_Controller.Parameters import Parameters
+from MPC_Controller.common.Quadruped import RobotType
+from MPC_Controller.utils import DTYPE, ControllerType
 
+from MPC_Controller.robot_runner.RobotRunnerMin import RobotRunnerMin
+from MPC_Controller.robot_runner.RobotRunnerFSM import RobotRunnerFSM
+from MPC_Controller.robot_runner.RobotRunnerPolicy import RobotRunnerPolicy
+
+from RL_Environment.sim_utils import *
+from RL_Environment import gamepad_reader
+
+
+parser = ArgumentParser(prog="RL_MPC_LOCOMOTION")
 parser.add_argument("--robot", default="Aliengo", choices=[name.title() for name in RobotType.__members__.keys()], help="robot types")
 parser.add_argument("--mode", default="Fsm", choices=[name.title() for name in ControllerType.__members__.keys()], help="controller types")
 parser.add_argument("--num-envs", type=int, default=1, help="the number of robots")
@@ -24,7 +28,7 @@ debug_vis = False # draw ground normal vector
 
 # 使用键盘输入控制
 gamepad = gamepad_reader.Gamepad(vel_scale_x=2.5, vel_scale_y=1.5, vel_scale_rot=3.0)
-print("键盘输入已启用")
+print("Keyboard control enabled")
 
 
 def main():
@@ -48,7 +52,7 @@ def main():
     cam_pos = gymapi.Vec3(2,2,2) # w.r.t target env
     viewer = add_viewer(gym, sim, envs[0], cam_pos)
     
-    # 订阅Isaac Gym键盘事件
+    # Subscribe to Isaac Gym keyboard events
     gym.subscribe_viewer_keyboard_event(viewer, gymapi.KEY_W, "KEY_W")
     gym.subscribe_viewer_keyboard_event(viewer, gymapi.KEY_S, "KEY_S")
     gym.subscribe_viewer_keyboard_event(viewer, gymapi.KEY_A, "KEY_A")
@@ -56,12 +60,12 @@ def main():
     gym.subscribe_viewer_keyboard_event(viewer, gymapi.KEY_Q, "KEY_Q")
     gym.subscribe_viewer_keyboard_event(viewer, gymapi.KEY_E, "KEY_E")
     gym.subscribe_viewer_keyboard_event(viewer, gymapi.KEY_SPACE, "KEY_SPACE")
-    # 使用 ASCII 码值 13 表示回车键（Isaac Gym 可能没有 KEY_RETURN 常量）
+    # Use ASCII value 13 for enter key (Isaac Gym may not have KEY_RETURN constant)
     try:
-        # 尝试使用 KEY_ENTER（如果存在）
+        # Try using KEY_ENTER (if it exists)
         gym.subscribe_viewer_keyboard_event(viewer, gymapi.KEY_ENTER, "KEY_ENTER")
     except AttributeError:
-        # 如果不存在，使用 ASCII 码值
+        # If not, use ASCII value
         gym.subscribe_viewer_keyboard_event(viewer, 13, "KEY_ENTER")
     gym.subscribe_viewer_keyboard_event(viewer, gymapi.KEY_ESCAPE, "KEY_ESCAPE")
 
@@ -95,16 +99,16 @@ def main():
 
     # simulation loop
     while not gym.query_viewer_has_closed(viewer):
-        # 处理Isaac Gym键盘事件
+        # Handle Isaac Gym keyboard events
         events = gym.query_viewer_action_events(viewer)
         for evt in events:
-            # evt.action 是订阅时设置的字符串（如 "KEY_W"）
-            # evt.value > 0 表示按下，evt.value == 0 表示释放
+            # evt.action is the string set when subscribing (e.g. "KEY_W")
+            # evt.value > 0 means pressed, evt.value == 0 means released
             if evt.value > 0:
                 gamepad.handle_keyboard_action(evt.action, 'pressed')
             elif evt.value == 0:
                 gamepad.handle_keyboard_action(evt.action, 'released')
-        # 每次循环都更新速度（基于当前按键状态），即使没有新事件
+        # Update velocity on every loop, even if there are no new events
         gamepad.update_keyboard_velocity()
         
         # step the physics
@@ -128,9 +132,9 @@ def main():
             gym.apply_actor_dof_efforts(env, actor, legTorques)
 
         if Parameters.locomotionUnsafe:
-            # 切换模式
+            # Switch mode
             gamepad._mode = next(gamepad._mode_generator)
-            print(f"切换模式: {gamepad._mode}")
+            print(f"Switch mode: {gamepad._mode}")
             Parameters.locomotionUnsafe = False
 
         if debug_vis:
